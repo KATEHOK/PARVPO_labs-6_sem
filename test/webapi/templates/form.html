@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форма обращения</title>
+</head>
+<body>
+    <h2>Форма обращения в управляющую компанию</h2>
+    <form action="/send" method="POST">
+        <label for="name">Ваше имя:</label><br>
+        <input type="text" id="name" name="name" required><br>
+
+        <label for="email">Ваш email:</label><br>
+        <input type="email" id="email" name="email" required><br>
+
+        <label for="subject">Тема обращения:</label><br>
+        <input type="text" id="subject" name="subject" required><br>
+
+        <label for="message">Сообщение:</label><br>
+        <textarea id="message" name="message" rows="4" cols="50" required></textarea><br>
+        
+        <input type="submit" value="Отправить">
+    </form>
+
+    <script>
+        // Функция для преобразования данных формы в JSON
+        function serializeFormToJSON(form) {
+            const formData = new FormData(form);
+            const jsonObject = {};
+            
+            formData.forEach((value, key) => {
+                jsonObject[key] = value;
+            });
+
+            return JSON.stringify(jsonObject);
+        }
+
+        // Обработчик события клика на кнопке
+        function handleFormSubmit(event) {
+            event.preventDefault(); // Отменяем стандартную отправку формы
+
+            const form = event.target.closest('form'); // Находим ближайшую форму
+            if (form) {
+                const jsonData = serializeFormToJSON(form);
+
+                console.log('Форма в формате JSON:', jsonData);
+
+                // Пример отправки данных на сервер
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: jsonData,
+                })
+                .then(response => {
+                    // Проверяем, что ответ сервера успешный
+                    if (!response.ok) {
+                        throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
+                    }
+                    // Получаем текстовый ответ (HTML)
+                    return response.text();
+                })
+                .then(html => {
+                    // Заменяем содержимое страницы на полученный HTML
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(error => {
+                    console.error('Ошибка отправки данных:', error);
+                });
+            }
+        }
+
+        // Слушаем событие загрузки контента страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            // Находим кнопку отправки формы
+            const submitButton = document.querySelector('form input[type="submit"]');
+            
+            if (submitButton) {
+                // Навешиваем обработчик на кнопку
+                submitButton.addEventListener('click', handleFormSubmit);
+            }
+        });
+
+    </script>
+</body>
+</html>

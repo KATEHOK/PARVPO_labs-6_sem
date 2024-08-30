@@ -2,6 +2,7 @@ version: '3'
 services:
   rabbitmq:
     image: "rabbitmq:management"
+    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -10,18 +11,25 @@ services:
       RABBITMQ_DEFAULT_PASS: password
     networks:
       - my_network
-  
+
   webapi:
     build: ./webapi
+    container_name: webapi
     ports:
       - "5000:5000"
     depends_on:
       - rabbitmq
     networks:
       - my_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   worker:
     build: ./worker
+    container_name: worker
     depends_on:
       - rabbitmq
       - db
@@ -32,9 +40,15 @@ services:
       POSTGRES_DB: mydatabase
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: postgres:13
+    container_name: db
     environment:
       POSTGRES_DB: mydatabase
       POSTGRES_USER: myuser
@@ -45,6 +59,47 @@ services:
       - my_network
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - my_network
+    privileged: true
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/loki.yaml
+    networks:
+      - my_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    networks:
+      - my_network
+    depends_on:
+      - loki
+
 
 networks:
   my_network:
